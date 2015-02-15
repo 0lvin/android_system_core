@@ -93,7 +93,7 @@ struct service {
     time_t time_started;    /* time of last start */
     time_t time_crashed;    /* first crash within inspection window */
     int nr_crashed;         /* number of times crashed within window */
-    
+
     uid_t uid;
     gid_t gid;
     gid_t supp_gids[NR_SVC_SUPP_GIDS];
@@ -105,7 +105,7 @@ struct service {
     struct svcenvinfo *envvars;
 
     struct action onrestart;  /* Actions to execute on restart. */
-    
+
     /* keycodes for triggering this service via /dev/keychord */
     int *keycodes;
     int nkeycodes;
@@ -139,6 +139,11 @@ void property_changed(const char *name, const char *value);
 #define INIT_IMAGE_FILE	"/initlogo.rle"
 
 int load_565rle_image( char *file_name );
+#endif
+
+#ifdef SCREEN_LOG
+int write_text(const char *log_string );
+void vt_create_nodes();
 #endif
 
 extern struct selabel_handle *sehandle;

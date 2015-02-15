@@ -627,6 +627,11 @@ static int is_last_command(struct action *act, struct command *cmd)
 void execute_one_command(void)
 {
     int ret;
+#ifdef SCREEN_LOG
+	char cmd_str[256] = "";
+	char buffer[1024] = "";
+	int i;
+#endif
 
     if (!cur_action || !cur_command || is_last_command(cur_action, cur_command)) {
         cur_action = action_remove_queue_head();
@@ -641,6 +646,20 @@ void execute_one_command(void)
 
     if (!cur_command)
         return;
+
+#ifdef SCREEN_LOG
+	cmd_str[0] = 0;
+	for (i = 0; i < cur_command->nargs; i++) {
+		strlcat(cmd_str, cur_command->args[i], sizeof(cmd_str));
+		if (i < cur_command->nargs - 1) {
+			strlcat(cmd_str, " ", sizeof(cmd_str));
+		}
+	}
+	snprintf(buffer, sizeof(buffer) -1, "command '%s' action=%s\n",
+		 cmd_str, cur_action ? cur_action->name : "");
+
+	write_text(buffer);
+#endif
 
     ret = cur_command->func(cur_command->nargs, cur_command->args);
     INFO("command '%s' r=%d\n", cur_command->args[0], ret);
@@ -753,6 +772,9 @@ static int console_init_action(int nargs, char **args)
         have_console = 1;
     close(fd);
 
+#ifdef SCREEN_LOG
+		write_text("init console\n");
+#endif
 #ifdef INITLOGO
     if( load_565rle_image(INIT_IMAGE_FILE) ) {
         fd = open("/dev/tty0", O_WRONLY);
@@ -1149,6 +1171,9 @@ int main(int argc, char **argv)
          */
     open_devnull_stdio();
     klog_init();
+	vt_create_nodes();
+
+	write_text("init\n");
 #endif
     property_init();
 
@@ -1172,6 +1197,8 @@ int main(int argc, char **argv)
     restorecon("/dev/socket");
     restorecon("/dev/__properties__");
     restorecon_recursive("/sys");
+
+	write_text("restorecon\n");
 
     is_charger = !strcmp(bootmode, "charger");
 
@@ -1197,6 +1224,8 @@ int main(int argc, char **argv)
         INFO("Reading target specific config file");
             init_parse_config_file("/init.target.rc");
     }
+
+	write_text("init.rc\n");
 
     action_for_each_trigger("early-init", action_add_queue_tail);
 
@@ -1249,6 +1278,7 @@ int main(int argc, char **argv)
 #if BOOTCHART
     queue_builtin_action(bootchart_init_action, "bootchart_init");
 #endif
+	write_text("start actions\n");
 
     for(;;) {
         int nr, i, timeout = -1;
