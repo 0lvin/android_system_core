@@ -157,12 +157,17 @@ int write_text(const char *fn)
     for(i = 0; i < strlen(fn); i ++) {
 		if (fn[i] == '\n') {
 			for(x=lx; x < (fb.vi.xres - 8); x ++) {
-				for(y=0; y < 0; y ++) {
+				for(y=0; y < 8; y ++) {
 					set_pixel(&fb, 0, 0, 0, x, ly + y);
 				}
 			}
 			ly += 8;
 			lx = 0;
+			for(x=0; x < (fb.vi.xres - 8); x ++) {
+				for(y=0; y < 8; y ++) {
+					set_pixel(&fb, 0, 0xffff, 0xffff, x, ly + y);
+				}
+			}
 			continue;
 		}
 		if (lx >= (fb.vi.xres - 8)) {
