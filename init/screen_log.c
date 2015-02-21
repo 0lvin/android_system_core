@@ -77,7 +77,6 @@ fail:
 static void fb_close(struct FB *fb)
 {
     munmap(fb->bits, fb->fi.line_length * fb->vi.yres);
-    sleep(1);
     //full_close();
 }
 
@@ -157,6 +156,11 @@ int write_text(const char *fn)
 
     for(i = 0; i < strlen(fn); i ++) {
 		if (fn[i] == '\n') {
+			for(x=lx; x < (fb.vi.xres - 8); x ++) {
+				for(y=0; y < 0; y ++) {
+					set_pixel(&fb, 0, 0, 0, x, ly + y);
+				}
+			}
 			ly += 8;
 			lx = 0;
 			continue;
@@ -165,8 +169,9 @@ int write_text(const char *fn)
 			lx = 0;
 			ly += 8;
 		}
-		if (ly >= (fb.vi.yres - 8)) {
+		if (ly >= (fb.vi.yres - 16)) {
 			ly = 0;
+			sleep(1);
 		}
 		for (x = 0; x < 8; x++) {
 			for (y = 0; y < 8; y++) {
