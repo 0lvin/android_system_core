@@ -104,6 +104,23 @@ static int have_console;
 static char console_name[PROP_VALUE_MAX] = "/dev/console";
 static time_t process_needs_restart;
 
+#ifdef SCREEN_LOG
+#define ERROR_LOG(...) ERROR(__VA_ARGS__)
+#else
+#define SCREEN_LOG_BUFF_SIZE 1024
+void error_write(const char *fmt, ...)
+{
+    char buf[SCREEN_LOG_BUFF_SIZE];
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(buf, SCREEN_LOG_BUFF_SIZE, fmt, ap);
+    buf[SCREEN_LOG_BUFF_SIZE - 1] = 0;
+    va_end(ap);
+    write_text(buf);
+}
+#define ERROR_LOG(...) error_write(__VA_ARGS__)
+#endif
+
 static const char *ENV[32];
 
 static unsigned emmc_boot = 0;
@@ -208,7 +225,7 @@ int add_environment(const char *key, const char *val)
 failed_cleanup:
     free((char *)expanded);
 failed:
-    ERROR("Fail to add env variable: %s. Not enough memory!", key);
+    ERROR_LOG("Fail to add env variable: %s. Not enough memory!", key);
     return 1;
 }
 
@@ -277,19 +294,19 @@ void service_start(struct service *svc, const char *dynamic_args)
 
     needs_console = (svc->flags & SVC_CONSOLE) ? 1 : 0;
     if (needs_console && (!have_console)) {
-        ERROR("service '%s' requires console\n", svc->name);
+        ERROR_LOG("service '%s' requires console\n", svc->name);
         svc->flags |= SVC_DISABLED;
         return;
     }
 
     if (stat(svc->args[0], &s) != 0) {
-        ERROR("cannot find '%s', disabling '%s'\n", svc->args[0], svc->name);
+        ERROR_LOG("cannot find '%s', disabling '%s'\n", svc->args[0], svc->name);
         svc->flags |= SVC_DISABLED;
         return;
     }
 
     if ((!(svc->flags & SVC_ONESHOT)) && dynamic_args) {
-        ERROR("service '%s' must be one-shot to use dynamic args, disabling\n",
+        ERROR_LOG("service '%s' must be one-shot to use dynamic args, disabling\n",
                svc->args[0]);
         svc->flags |= SVC_DISABLED;
         return;
@@ -299,7 +316,7 @@ void service_start(struct service *svc, const char *dynamic_args)
         if (svc->seclabel) {
             scon = strdup(svc->seclabel);
             if (!scon) {
-                ERROR("Out of memory while starting '%s'\n", svc->name);
+                ERROR_LOG("Out of memory while starting '%s'\n", svc->name);
                 return;
             }
         } else {
@@ -308,13 +325,13 @@ void service_start(struct service *svc, const char *dynamic_args)
             INFO("computing context for service '%s'\n", svc->args[0]);
             rc = getcon(&mycon);
             if (rc < 0) {
-                ERROR("could not get context while starting '%s'\n", svc->name);
+                ERROR_LOG("could not get context while starting '%s'\n", svc->name);
                 return;
             }
 
             rc = getfilecon(svc->args[0], &fcon);
             if (rc < 0) {
-                ERROR("could not get context while starting '%s'\n", svc->name);
+                ERROR_LOG("could not get context while starting '%s'\n", svc->name);
                 freecon(mycon);
                 return;
             }
@@ -323,7 +340,7 @@ void service_start(struct service *svc, const char *dynamic_args)
             freecon(mycon);
             freecon(fcon);
             if (rc < 0) {
-                ERROR("could not get context while starting '%s'\n", svc->name);
+                ERROR_LOG("could not get context while starting '%s'\n", svc->name);
                 return;
             }
         }
@@ -365,7 +382,7 @@ void service_start(struct service *svc, const char *dynamic_args)
 
         if (svc->ioprio_class != IoSchedClass_NONE) {
             if (android_set_ioprio(getpid(), svc->ioprio_class, svc->ioprio_pri)) {
-                ERROR("Failed to set pid %d ioprio = %d,%d: %s\n",
+                ERROR_LOG("Failed to set pid %d ioprio = %d,%d: %s\n",
                       getpid(), svc->ioprio_class, svc->ioprio_pri, strerror(errno));
             }
         }
@@ -391,32 +408,32 @@ void service_start(struct service *svc, const char *dynamic_args)
     /* as requested, set our gid, supplemental gids, and uid */
         if (svc->gid) {
             if (setgid(svc->gid) != 0) {
-                ERROR("setgid failed: %s\n", strerror(errno));
+                ERROR_LOG("setgid failed: %s\n", strerror(errno));
                 _exit(127);
             }
         }
         if (svc->nr_supp_gids) {
             if (setgroups(svc->nr_supp_gids, svc->supp_gids) != 0) {
-                ERROR("setgroups failed: %s\n", strerror(errno));
+                ERROR_LOG("setgroups failed: %s\n", strerror(errno));
                 _exit(127);
             }
         }
         if (svc->uid) {
             if (setuid(svc->uid) != 0) {
-                ERROR("setuid failed: %s\n", strerror(errno));
+                ERROR_LOG("setuid failed: %s\n", strerror(errno));
                 _exit(127);
             }
         }
         if (svc->seclabel) {
             if (is_selinux_enabled() > 0 && setexeccon(svc->seclabel) < 0) {
-                ERROR("cannot setexeccon('%s'): %s\n", svc->seclabel, strerror(errno));
+                ERROR_LOG("cannot setexeccon('%s'): %s\n", svc->seclabel, strerror(errno));
                 _exit(127);
             }
         }
 
         if (!dynamic_args) {
             if (execve(svc->args[0], (char**) svc->args, (char**) ENV) < 0) {
-                ERROR("cannot execve('%s'): %s\n", svc->args[0], strerror(errno));
+                ERROR_LOG("cannot execve('%s'): %s\n", svc->args[0], strerror(errno));
             }
         } else {
             char *arg_ptrs[INIT_PARSER_MAXARGS+1];
@@ -442,7 +459,7 @@ void service_start(struct service *svc, const char *dynamic_args)
     freecon(scon);
 
     if (pid < 0) {
-        ERROR("failed to start '%s'\n", svc->name);
+        ERROR_LOG("failed to start '%s'\n", svc->name);
         svc->pid = 0;
         return;
     }
@@ -556,7 +573,7 @@ static void msg_start(const char *name)
     if (svc) {
         service_start(svc, args);
     } else {
-        ERROR("no such service '%s'\n", name);
+        ERROR_LOG("no such service '%s'\n", name);
     }
     if (tmp)
         free(tmp);
@@ -569,7 +586,7 @@ static void msg_stop(const char *name)
     if (svc) {
         service_stop(svc);
     } else {
-        ERROR("no such service '%s'\n", name);
+        ERROR_LOG("no such service '%s'\n", name);
     }
 }
 
@@ -580,7 +597,7 @@ static void msg_restart(const char *name)
     if (svc) {
         service_restart(svc);
     } else {
-        ERROR("no such service '%s'\n", name);
+        ERROR_LOG("no such service '%s'\n", name);
     }
 }
 
@@ -593,7 +610,7 @@ void handle_control_message(const char *msg, const char *arg)
     } else if (!strcmp(msg,"restart")) {
         msg_restart(arg);
     } else {
-        ERROR("unknown control msg '%s'\n", msg);
+        ERROR_LOG("unknown control msg '%s'\n", msg);
     }
 }
 
@@ -665,7 +682,7 @@ void execute_one_command(void)
     ret = cur_command->func(cur_command->nargs, cur_command->args);
 
 #ifdef SCREEN_LOG
-	snprintf(buffer, sizeof(buffer) -1, "=>%d\n", cur_command->args[0], ret);
+	snprintf(buffer, sizeof(buffer) -1, "=>%d\n", ret);
 	write_text(buffer);
 #endif
     INFO("command '%s' r=%d\n", cur_command->args[0], ret);
@@ -677,7 +694,7 @@ static int wait_for_coldboot_done_action(int nargs, char **args)
     INFO("wait for %s\n", coldboot_done);
     ret = wait_for_file(coldboot_done, COMMAND_RETRY_TIMEOUT);
     if (ret)
-        ERROR("Timed out waiting for %s\n", coldboot_done);
+        ERROR_LOG("Timed out waiting for %s\n", coldboot_done);
     return ret;
 }
 
@@ -709,11 +726,11 @@ static int mix_hwrng_into_linux_rng_action(int nargs, char **args)
             open("/dev/hw_random", O_RDONLY | O_NOFOLLOW));
     if (hwrandom_fd == -1) {
         if (errno == ENOENT) {
-          ERROR("/dev/hw_random not found\n");
+          ERROR_LOG("/dev/hw_random not found\n");
           /* It's not an error to not have a Hardware RNG. */
           result = 0;
         } else {
-          ERROR("Failed to open /dev/hw_random: %s\n", strerror(errno));
+          ERROR_LOG("Failed to open /dev/hw_random: %s\n", strerror(errno));
         }
         goto ret;
     }
@@ -721,7 +738,7 @@ static int mix_hwrng_into_linux_rng_action(int nargs, char **args)
     urandom_fd = TEMP_FAILURE_RETRY(
             open("/dev/urandom", O_WRONLY | O_NOFOLLOW));
     if (urandom_fd == -1) {
-        ERROR("Failed to open /dev/urandom: %s\n", strerror(errno));
+        ERROR_LOG("Failed to open /dev/urandom: %s\n", strerror(errno));
         goto ret;
     }
 
@@ -729,16 +746,16 @@ static int mix_hwrng_into_linux_rng_action(int nargs, char **args)
         chunk_size = TEMP_FAILURE_RETRY(
                 read(hwrandom_fd, buf, sizeof(buf) - total_bytes_written));
         if (chunk_size == -1) {
-            ERROR("Failed to read from /dev/hw_random: %s\n", strerror(errno));
+            ERROR_LOG("Failed to read from /dev/hw_random: %s\n", strerror(errno));
             goto ret;
         } else if (chunk_size == 0) {
-            ERROR("Failed to read from /dev/hw_random: EOF\n");
+            ERROR_LOG("Failed to read from /dev/hw_random: EOF\n");
             goto ret;
         }
 
         chunk_size = TEMP_FAILURE_RETRY(write(urandom_fd, buf, chunk_size));
         if (chunk_size == -1) {
-            ERROR("Failed to write to /dev/urandom: %s\n", strerror(errno));
+            ERROR_LOG("Failed to write to /dev/urandom: %s\n", strerror(errno));
             goto ret;
         }
         total_bytes_written += chunk_size;
@@ -955,7 +972,7 @@ static int check_startup_action(int nargs, char **args)
     /* make sure we actually have all the pieces we need */
     if ((get_property_set_fd() < 0) ||
         (get_signal_fd() < 0)) {
-        ERROR("init startup failure\n");
+        ERROR_LOG("init startup failure\n");
         exit(1);
     }
 
@@ -978,7 +995,7 @@ static int bootchart_init_action(int nargs, char **args)
 {
     bootchart_count = bootchart_init();
     if (bootchart_count < 0) {
-        ERROR("bootcharting init failure\n");
+        ERROR_LOG("bootcharting init failure\n");
     } else if (bootchart_count > 0) {
         NOTICE("bootcharting started (period=%d ms)\n", bootchart_count*BOOTCHART_POLLING_MS);
     } else {
@@ -1004,7 +1021,7 @@ struct selabel_handle* selinux_android_prop_context_handle(void)
     }
 
     if (!sehandle) {
-        ERROR("SELinux:  Could not load property_contexts:  %s\n",
+        ERROR_LOG("SELinux:  Could not load property_contexts:  %s\n",
               strerror(errno));
         return NULL;
     }
@@ -1053,7 +1070,7 @@ static bool selinux_is_enforcing(void)
     }
 
     if (strcmp(tmp, "enforcing") != 0) {
-        ERROR("SELinux: Unknown value of ro.boot.selinux. Got: \"%s\". Assuming enforcing.\n", tmp);
+        ERROR_LOG("SELinux: Unknown value of ro.boot.selinux. Got: \"%s\". Assuming enforcing.\n", tmp);
     }
 
     return true;
@@ -1114,7 +1131,7 @@ static void selinux_initialize(void)
 
     INFO("loading selinux policy\n");
     if (selinux_android_load_policy() < 0) {
-        ERROR("SELinux: Failed to load policy; rebooting into recovery mode\n");
+        ERROR_LOG("SELinux: Failed to load policy; rebooting into recovery mode\n");
         android_reboot(ANDROID_RB_RESTART2, 0, "recovery");
         while (1) { pause(); }  // never reached
     }
