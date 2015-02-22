@@ -134,7 +134,7 @@ void set_pixel(struct FB *fb, short r, short g, short b, short x, short y) {
 	memcpy(write_pos, &pixel_color, count_bytes);
 }
 
-int write_text(const char *fn)
+int write_text(const char *fn, int error)
 {
     struct FB fb;
     unsigned char *data, *bits, *ptr;
@@ -156,7 +156,7 @@ int write_text(const char *fn)
 
     for(i = 0; i < strlen(fn); i ++) {
 		if (fn[i] == '\n') {
-			for(x=lx; x < (fb.vi.xres - 8); x ++) {
+			for(x=lx; x < (fb.vi.xres); x ++) {
 				for(y=0; y < 8; y ++) {
 					set_pixel(&fb, 0, 0, 0, x, ly + y);
 				}
@@ -164,7 +164,7 @@ int write_text(const char *fn)
 			ly += 8;
 			lx = 0;
 			if (ly < (fb.vi.yres - 8)) {
-				for(x=0; x < (fb.vi.xres - 8); x ++) {
+				for(x=0; x < fb.vi.xres; x ++) {
 					for(y=0; y < 8; y ++) {
 						set_pixel(&fb, 0, 0xffff, 0xffff, x, ly + y);
 					}
@@ -188,7 +188,11 @@ int write_text(const char *fn)
 			for (y = 0; y < 8; y++) {
 			    mask = font8x8[fn[i] * 8 + y];
 			    /* font pixels: 0 - right, 7 - left */
-			    value = (mask & (1 << (7 - x))) == 0 ? 0 : 0xffff;
+			    if(error) {
+					value = (mask & (1 << (7 - x))) == 0 ? 0xffff : 0;
+				} else {
+					value = (mask & (1 << (7 - x))) == 0 ? 0 : 0xffff;
+				}
 			    set_pixel(&fb, value, value, value, lx + x, ly + y);
 			}
 		}

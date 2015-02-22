@@ -32,7 +32,7 @@ struct command
     int nargs;
     char *args[1];
 };
-    
+
 struct action {
         /* node in list of all actions */
     struct listnode alist;
@@ -43,7 +43,7 @@ struct action {
 
     unsigned hash;
     const char *name;
-    
+
     struct listnode commands;
     struct command *current;
 };
@@ -142,7 +142,7 @@ int load_565rle_image( char *file_name );
 #endif
 
 #ifdef SCREEN_LOG
-int write_text(const char *log_string );
+int write_text(const char *log_string, int error);
 void vt_create_nodes();
 #endif
 

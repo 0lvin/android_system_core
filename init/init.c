@@ -116,7 +116,7 @@ void error_write(const char *fmt, ...)
     vsnprintf(buf, SCREEN_LOG_BUFF_SIZE, fmt, ap);
     buf[SCREEN_LOG_BUFF_SIZE - 1] = 0;
     va_end(ap);
-    write_text(buf);
+    write_text(buf, 1);
 }
 #define ERROR_LOG(...) error_write(__VA_ARGS__)
 #endif
@@ -676,14 +676,14 @@ void execute_one_command(void)
 		 cur_action ? cur_action->name : "", cmd_str);
 
 
-	write_text(buffer);
+	write_text(buffer, 0);
 #endif
 
     ret = cur_command->func(cur_command->nargs, cur_command->args);
 
 #ifdef SCREEN_LOG
 	snprintf(buffer, sizeof(buffer) -1, "=>%d\n", ret);
-	write_text(buffer);
+	write_text(buffer, 0);
 #endif
     INFO("command '%s' r=%d\n", cur_command->args[0], ret);
 }
@@ -796,7 +796,7 @@ static int console_init_action(int nargs, char **args)
     close(fd);
 
 #ifdef SCREEN_LOG
-		write_text("init console\n");
+		write_text("init console\n", 0);
 #endif
 #ifdef INITLOGO
     if( load_565rle_image(INIT_IMAGE_FILE) ) {
@@ -1196,7 +1196,7 @@ int main(int argc, char **argv)
     klog_init();
 	vt_create_nodes();
 
-	write_text("init\n");
+	write_text("init\n", 0);
 #endif
     property_init();
 
@@ -1246,7 +1246,7 @@ int main(int argc, char **argv)
             init_parse_config_file("/init.target.rc");
     }
 
-	write_text("init.rc\n");
+	write_text("init.rc\n", 0);
 
     action_for_each_trigger("early-init", action_add_queue_tail);
 
@@ -1299,7 +1299,7 @@ int main(int argc, char **argv)
 #if BOOTCHART
     queue_builtin_action(bootchart_init_action, "bootchart_init");
 #endif
-	write_text("start actions\n");
+	write_text("start actions\n", 0);
 
     for(;;) {
         int nr, i, timeout = -1;
