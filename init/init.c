@@ -655,13 +655,19 @@ void execute_one_command(void)
 			strlcat(cmd_str, " ", sizeof(cmd_str));
 		}
 	}
-	snprintf(buffer, sizeof(buffer) -1, "command '%s' action=%s\n",
-		 cmd_str, cur_action ? cur_action->name : "");
+	snprintf(buffer, sizeof(buffer) -1, "'%s'>'%s'",
+		 cur_action ? cur_action->name : "", cmd_str);
+
 
 	write_text(buffer);
 #endif
 
     ret = cur_command->func(cur_command->nargs, cur_command->args);
+
+#ifdef SCREEN_LOG
+	snprintf(buffer, sizeof(buffer) -1, "=>%d\n", cur_command->args[0], ret);
+	write_text(buffer);
+#endif
     INFO("command '%s' r=%d\n", cur_command->args[0], ret);
 }
 
@@ -1197,8 +1203,6 @@ int main(int argc, char **argv)
     restorecon("/dev/socket");
     restorecon("/dev/__properties__");
     restorecon_recursive("/sys");
-
-	write_text("restorecon\n");
 
     is_charger = !strcmp(bootmode, "charger");
 

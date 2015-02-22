@@ -163,20 +163,26 @@ int write_text(const char *fn)
 			}
 			ly += 8;
 			lx = 0;
-			for(x=0; x < (fb.vi.xres - 8); x ++) {
-				for(y=0; y < 8; y ++) {
-					set_pixel(&fb, 0, 0xffff, 0xffff, x, ly + y);
+			if (ly < (fb.vi.yres - 8)) {
+				for(x=0; x < (fb.vi.xres - 8); x ++) {
+					for(y=0; y < 8; y ++) {
+						set_pixel(&fb, 0, 0xffff, 0xffff, x, ly + y);
+					}
 				}
 			}
 			continue;
 		}
-		if (lx >= (fb.vi.xres - 8)) {
+		if (lx >= fb.vi.xres) {
 			lx = 0;
 			ly += 8;
 		}
-		if (ly >= (fb.vi.yres - 16)) {
+		if (ly >= (fb.vi.yres - 8)) {
 			ly = 0;
-			sleep(1);
+			/*
+			 * you can add some sleep for check
+			 * what already done on this page
+			 * sleep(1);
+			 */
 		}
 		for (x = 0; x < 8; x++) {
 			for (y = 0; y < 8; y++) {
