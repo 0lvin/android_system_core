@@ -77,7 +77,9 @@ fail:
 static void fb_close(struct FB *fb)
 {
     munmap(fb->bits, fb->fi.line_length * fb->vi.yres);
-    //full_close();
+    // only for case when exist troubles
+    // with open already opened file in different thread
+    // full_close();
 }
 
 /* there's got to be a more portable way to do this ... */
@@ -134,7 +136,7 @@ void set_pixel(struct FB *fb, short r, short g, short b, short x, short y) {
 	memcpy(write_pos, &pixel_color, count_bytes);
 }
 
-int write_text(const char *fn, int error)
+int write_text(const char *fn)
 {
     struct FB fb;
     unsigned char *data, *bits, *ptr;
@@ -145,58 +147,52 @@ int write_text(const char *fn, int error)
 
     klog_write(0, "screen: %s", fn);
 
-    if (vt_set_mode(1)) {
-		klog_write(0, "no mode\n");
-    }
+    vt_set_mode(1);
 
     if (fb_open(&fb)) {
-		klog_write(0, "troubles with framebuffer\n");
+	klog_write(0, "troubles with framebuffer\n");
         goto fail_unmap_data;
     }
 
     for(i = 0; i < strlen(fn); i ++) {
-		if (fn[i] == '\n') {
-			for(x=lx; x < (fb.vi.xres); x ++) {
-				for(y=0; y < 8; y ++) {
-					set_pixel(&fb, 0, 0, 0, x, ly + y);
-				}
-			}
-			ly += 8;
-			lx = 0;
-			if (ly < (fb.vi.yres - 8)) {
-				for(x=0; x < fb.vi.xres; x ++) {
-					for(y=0; y < 8; y ++) {
-						set_pixel(&fb, 0, 0xffff, 0xffff, x, ly + y);
-					}
-				}
-			}
-			continue;
+	if (fn[i] == '\n') {
+	    for(x=lx; x < (fb.vi.xres); x ++) {
+		for(y=0; y < 8; y ++) {
+		    set_pixel(&fb, 0, 0, 0, x, ly + y);
 		}
-		if (lx >= fb.vi.xres) {
-			lx = 0;
-			ly += 8;
+	    }
+	    ly += 8;
+	    lx = 0;
+	    if (ly < (fb.vi.yres - 8)) {
+		for(x=0; x < fb.vi.xres; x ++) {
+		    for(y=0; y < 8; y ++) {
+			set_pixel(&fb, 0, 0xffff, 0xffff, x, ly + y);
+		    }
 		}
-		if (ly >= (fb.vi.yres - 8)) {
-			ly = 0;
-			/*
-			 * you can add some sleep for check
-			 * what already done on this page
-			 * sleep(1);
-			 */
-		}
-		for (x = 0; x < 8; x++) {
-			for (y = 0; y < 8; y++) {
-			    mask = font8x8[fn[i] * 8 + y];
-			    /* font pixels: 0 - right, 7 - left */
-			    if(error) {
-					value = (mask & (1 << (7 - x))) == 0 ? 0xffff : 0;
-				} else {
-					value = (mask & (1 << (7 - x))) == 0 ? 0 : 0xffff;
-				}
-			    set_pixel(&fb, value, value, value, lx + x, ly + y);
-			}
-		}
-		lx += 8;
+	    }
+	    continue;
+	}
+	if (lx >= fb.vi.xres) {
+		lx = 0;
+		ly += 8;
+	}
+	if (ly >= (fb.vi.yres - 8)) {
+		ly = 0;
+		/*
+		 * you can add some sleep for check
+		 * what already done on this page
+		 * sleep(1);
+		 */
+	}
+	for (x = 0; x < 8; x++) {
+	    for (y = 0; y < 8; y++) {
+		mask = font8x8[fn[i] * 8 + y];
+		/* font pixels: 0 - right, 7 - left */
+		value = (mask & (1 << (7 - x))) == 0 ? 0 : 0xffff;
+		set_pixel(&fb, value, value, value, lx + x, ly + y);
+	    }
+	}
+	lx += 8;
     }
     fb_update(&fb);
     fb_close(&fb);

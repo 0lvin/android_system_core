@@ -142,7 +142,7 @@ int load_565rle_image( char *file_name );
 #endif
 
 #ifdef SCREEN_LOG
-int write_text(const char *log_string, int error);
+int write_text(const char *log_string);
 void vt_create_nodes();
 #endif
 
