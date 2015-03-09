@@ -44,11 +44,11 @@ static void full_close() {
 static int fb_open(struct FB *fb)
 {
 	if (fb_fd < 0) {
-		fb_fd = open("/dev/graphics/fb0", O_RDWR);
-		if (fb_fd < 0) {
-			klog_write(0, "no graphics\n");
-			return -1;
-		}
+	    fb_fd = open("/dev/graphics/fb0", O_RDWR);
+	    if (fb_fd < 0) {
+		klog_write(0, "no graphics\n");
+		return -1;
+	    }
 	}
 
     if (ioctl(fb_fd, FBIOGET_FSCREENINFO, &fb->fi) < 0) {
@@ -63,14 +63,14 @@ static int fb_open(struct FB *fb)
     fb->bits = mmap(0, fb->fi.line_length * fb->vi.yres, PROT_READ | PROT_WRITE,
                     MAP_SHARED, fb_fd, 0);
     if (fb->bits == MAP_FAILED) {
-		klog_write(0, "no MMAP\n");
+	klog_write(0, "no MMAP\n");
         goto fail;
     }
 
     return 0;
 
 fail:
-	full_close();
+    full_close();
     return -1;
 }
 
@@ -114,7 +114,6 @@ static int vt_set_mode(int graphics)
     int fd, r;
     fd = open("/dev/tty0", O_RDWR | O_SYNC);
     if (fd < 0) {
-		klog_write(0, "no tty\n");
         return -1;
     }
     r = ioctl(fd, KDSETMODE, graphics ? KD_GRAPHICS : KD_TEXT);
@@ -145,7 +144,7 @@ int write_text(const char *fn)
     unsigned int i, x, y;
     unsigned short value, mask;
 
-    klog_write(0, "screen: %s", fn);
+    klog_write(0, ">%s", fn);
 
     vt_set_mode(1);
 
