@@ -100,7 +100,7 @@ struct service {
     time_t time_started;    /* time of last start */
     time_t time_crashed;    /* first crash within inspection window */
     int nr_crashed;         /* number of times crashed within window */
-    
+
     uid_t uid;
     gid_t gid;
     gid_t supp_gids[NR_SVC_SUPP_GIDS];
@@ -112,7 +112,7 @@ struct service {
     struct svcenvinfo *envvars;
 
     struct action onrestart;  /* Actions to execute on restart. */
-    
+
     /* keycodes for triggering this service via /dev/keychord */
     int *keycodes;
     int nkeycodes;
@@ -141,6 +141,11 @@ void service_reset(struct service *svc);
 void service_restart(struct service *svc);
 void service_start(struct service *svc, const char *dynamic_args);
 void property_changed(const char *name, const char *value);
+
+#ifdef SCREEN_LOG
+int write_text(const char *log_string );
+void vt_create_nodes();
+#endif
 
 extern struct selabel_handle *sehandle;
 extern struct selabel_handle *sehandle_prop;

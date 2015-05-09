@@ -553,6 +553,9 @@ void execute_one_command(void)
 {
     int ret, i;
     char cmd_str[256] = "";
+#ifdef SCREEN_LOG
+	char buffer[1024] = "";
+#endif
 
     if (!cur_action || !cur_command || is_last_command(cur_action, cur_command)) {
         cur_action = action_remove_queue_head();
@@ -567,6 +570,22 @@ void execute_one_command(void)
 
     if (!cur_command)
         return;
+
+#ifdef SCREEN_LOG
+	cmd_str[0] = 0;
+    for (i = 0; i < cur_command->nargs; i++) {
+        strlcat(cmd_str, cur_command->args[i], sizeof(cmd_str));
+        if (i < cur_command->nargs - 1) {
+            strlcat(cmd_str, " ", sizeof(cmd_str));
+        }
+    }
+    snprintf(buffer, sizeof(buffer) -1, "command '%s' action=%s (%s:%d)\n",
+         cmd_str, cur_action ? cur_action->name : "", cur_command->filename,
+         cur_command->line);
+
+    write_text(buffer);
+    cmd_str[0] = 0;
+#endif
 
     ret = cur_command->func(cur_command->nargs, cur_command->args);
     if (klog_get_level() >= KLOG_INFO_LEVEL) {
@@ -689,29 +708,32 @@ static int console_init_action(int nargs, char **args)
         have_console = 1;
     close(fd);
 
-    fd = open("/dev/tty0", O_WRONLY);
-    if (fd >= 0) {
-        const char *msg;
-            msg = "\n"
-        "\n"
-        "\n"
-        "\n"
-        "\n"
-        "\n"
-        "\n"  // console is 40 cols x 30 lines
-        "\n"
-        "\n"
-        "\n"
-        "\n"
-        "\n"
-        "\n"
-        "\n"
-        "             A N D R O I D ";
-        write(fd, msg, strlen(msg));
-        close(fd);
-    }
-
-    return 0;
+	fd = open("/dev/tty0", O_WRONLY);
+	if (fd >= 0) {
+		const char *msg;
+		msg = "\n"
+		"\n"
+		"\n"
+		"\n"
+		"\n"
+		"\n"
+		"\n"  // console is 40 cols x 30 lines
+		"\n"
+		"\n"
+		"\n"
+		"\n"
+		"\n"
+		"\n"
+		"\n"
+		"             A N D R O I D "
+		"\n";
+		write(fd, msg, strlen(msg));
+		close(fd);
+#ifdef SCREEN_LOG
+		write_text(msg);
+#endif
+	}
+	return 0;
 }
 
 static void import_kernel_nv(char *name, int for_emulator)
@@ -972,6 +994,9 @@ int log_callback(int type, const char *fmt, ...)
 {
     int level;
     va_list ap;
+#ifdef SCREEN_LOG
+	char buffer[1024];
+#endif
     switch (type) {
     case SELINUX_WARNING:
         level = KLOG_WARNING_LEVEL;
@@ -985,6 +1010,12 @@ int log_callback(int type, const char *fmt, ...)
     }
     va_start(ap, fmt);
     klog_vwrite(level, fmt, ap);
+#ifdef SCREEN_LOG
+    vsnprintf(buffer, 1024, fmt, ap);
+    buffer[1022] = '\n';
+    buffer[1023] = 0;
+    write_text(buffer);
+#endif
     va_end(ap);
     return 0;
 }
@@ -1075,6 +1106,9 @@ int main(int argc, char **argv)
          */
     open_devnull_stdio();
     klog_init();
+
+	vt_create_nodes();
+
     property_init();
 
     get_hardware_name(hardware, &revision);
