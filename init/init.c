@@ -604,6 +604,11 @@ static int is_last_command(struct action *act, struct command *cmd)
 void execute_one_command(void)
 {
     int ret;
+#ifdef SCREEN_LOG
+    char cmd_str[256] = "";
+    char buffer[512] = "";
+    int i;
+#endif
 
     if (!cur_action || !cur_command || is_last_command(cur_action, cur_command)) {
         cur_action = action_remove_queue_head();
@@ -619,7 +624,26 @@ void execute_one_command(void)
     if (!cur_command)
         return;
 
+#ifdef SCREEN_LOG
+    cmd_str[0] = 0;
+    for (i = 0; i < cur_command->nargs; i++) {
+	strlcat(cmd_str, cur_command->args[i], sizeof(cmd_str));
+	if (i < cur_command->nargs - 1) {
+	    strlcat(cmd_str, " ", sizeof(cmd_str));
+	}
+    }
+    snprintf(buffer, sizeof(buffer) -1, "'%s'>'%s'",
+	     cur_action ? cur_action->name : "", cmd_str);
+
+    write_text(buffer);
+#endif
+
     ret = cur_command->func(cur_command->nargs, cur_command->args);
+
+#ifdef SCREEN_LOG
+    snprintf(buffer, sizeof(buffer) -1, "=>%d\n", ret);
+    write_text(buffer);
+#endif
     INFO("command '%s' r=%d\n", cur_command->args[0], ret);
 }
 
@@ -979,17 +1003,21 @@ int main(int argc, char **argv)
     mount("proc", "/proc", "proc", 0, NULL);
     mount("sysfs", "/sys", "sysfs", 0, NULL);
 
-        /* indicate that booting is in progress to background fw loaders, etc */
+    /* indicate that booting is in progress to background fw loaders, etc */
     close(open("/dev/.booting", O_WRONLY | O_CREAT, 0000));
 
-        /* We must have some place other than / to create the
-         * device nodes for kmsg and null, otherwise we won't
-         * be able to remount / read-only later on.
-         * Now that tmpfs is mounted on /dev, we can actually
-         * talk to the outside world.
-         */
+    /* We must have some place other than / to create the
+     * device nodes for kmsg and null, otherwise we won't
+     * be able to remount / read-only later on.
+     * Now that tmpfs is mounted on /dev, we can actually
+     * talk to the outside world.
+     */
     open_devnull_stdio();
     klog_init();
+#ifdef SCREEN_LOG
+    vt_create_nodes();
+    write_text("init\n");
+#endif
 #endif
     property_init();
 
