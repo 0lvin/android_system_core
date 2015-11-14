@@ -29,7 +29,7 @@ ifneq (,$(filter userdebug eng,$(TARGET_BUILD_VARIANT)))
 LOCAL_CFLAGS += -DALLOW_LOCAL_PROP_OVERRIDE=1 -DALLOW_DISABLE_SELINUX=1
 endif
 
-ifneq ($(TARGET_NO_SCREEN_LOG),true)
+ifeq ($(TARGET_SCREEN_LOG),true)
 LOCAL_SRC_FILES += screen_log.c
 LOCAL_CFLAGS    += -DSCREEN_LOG
 endif
