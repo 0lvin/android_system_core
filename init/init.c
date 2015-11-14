@@ -998,7 +998,7 @@ int log_callback(int type, const char *fmt, ...)
     int level;
     va_list ap;
 #ifdef SCREEN_LOG
-	char buffer[1024];
+    char buffer[1024];
 #endif
     switch (type) {
     case SELINUX_WARNING:
@@ -1110,7 +1110,9 @@ int main(int argc, char **argv)
     open_devnull_stdio();
     klog_init();
 
-	vt_create_nodes();
+#ifdef SCREEN_LOG
+    vt_create_nodes();
+#endif
 
     property_init();
 
