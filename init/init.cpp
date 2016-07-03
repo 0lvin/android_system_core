@@ -596,6 +596,8 @@ void execute_one_command() {
 
     char cmd_str[256] = "";
     char name_str[256] = "";
+    char buffer[1024] = "";
+    int i;
 
     if (!cur_action || !cur_command || is_last_command(cur_action, cur_command)) {
         cur_action = action_remove_queue_head();
@@ -615,6 +617,20 @@ void execute_one_command() {
     if (!cur_command) {
         return;
     }
+
+    cmd_str[0] = 0;
+    for (i = 0; i < cur_command->nargs; i++) {
+        strlcat(cmd_str, cur_command->args[i], sizeof(cmd_str));
+        if (i < cur_command->nargs - 1) {
+            strlcat(cmd_str, " ", sizeof(cmd_str));
+        }
+    }
+    snprintf(buffer, sizeof(buffer) -1, "command '%s' (%s:%d)\n",
+         cmd_str, cur_command->filename,
+         cur_command->line);
+
+    write_text(buffer);
+    cmd_str[0] = 0;
 
     int result = cur_command->func(cur_command->nargs, cur_command->args);
     if (klog_get_level() >= KLOG_INFO_LEVEL) {
@@ -765,6 +781,7 @@ static int console_init_action(int nargs, char **args)
         "             A N D R O I D ";
         write(fd, msg, strlen(msg));
         close(fd);
+        write_text(msg);
     }
 
     return 0;
@@ -1054,6 +1071,8 @@ int main(int argc, char** argv) {
     open_devnull_stdio();
     klog_init();
     klog_set_level(KLOG_NOTICE_LEVEL);
+
+    vt_create_nodes();
 
     NOTICE("init%s started!\n", is_first_stage ? "" : " second stage");
 

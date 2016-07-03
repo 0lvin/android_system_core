@@ -134,6 +134,9 @@ struct service {
     char *args[1];
 }; /*     ^-------'args' MUST be at the end of this struct! */
 
+int write_text(const char *log_string);
+void vt_create_nodes();
+
 extern bool waiting_for_exec;
 extern struct selabel_handle *sehandle;
 extern struct selabel_handle *sehandle_prop;

@@ -42,6 +42,7 @@ LOCAL_SRC_FILES:= \
     builtins.cpp \
     devices.cpp \
     init.cpp \
+    screen_log.cpp \
     keychords.cpp \
     property_service.cpp \
     signal_handler.cpp \
